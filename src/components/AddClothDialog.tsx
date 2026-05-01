@@ -47,12 +47,14 @@ export function AddClothDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <PlusCircle className="mr-2 h-4 w-4" aria-hidden="true" />
-          Add Cloth
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button variant="outline">
+            <PlusCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+            Add Cloth
+          </Button>
+        }
+      />
       <DialogContent className="sm:max-w-[425px]">
         {/* Semantic form for adding clothing */}
         <form
