@@ -3,6 +3,7 @@
 import { put } from '@vercel/blob';
 import { db } from '@/db';
 import { clothes, laundryItems, laundrySessions } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -41,4 +42,30 @@ export async function createLaundrySession(clothIds: string[]) {
 
   revalidatePath('/');
   redirect(`/sessions/${session.id}`);
+}
+
+export async function toggleItemReturn(itemId: string, isReturned: boolean) {
+  const [item] = await db
+    .update(laundryItems)
+    .set({ isReturned })
+    .where(eq(laundryItems.id, itemId))
+    .returning({ sessionId: laundryItems.sessionId });
+
+  if (!item) throw new Error('Item not found');
+
+  // Check if all items are returned to update session status
+  const allItems = await db
+    .select()
+    .from(laundryItems)
+    .where(eq(laundryItems.sessionId, item.sessionId));
+
+  const allReturned = allItems.every((i) => i.isReturned);
+
+  await db
+    .update(laundrySessions)
+    .set({ status: allReturned ? 'completed' : 'active' })
+    .where(eq(laundrySessions.id, item.sessionId));
+
+  revalidatePath(`/sessions/${item.sessionId}`);
+  revalidatePath('/'); // Dashboard also shows sessions
 }
