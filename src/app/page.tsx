@@ -1,65 +1,154 @@
-import Image from "next/image";
+import { db } from "@/db";
+import { clothes, laundryItems, laundrySessions } from "@/db/schema";
+import { count, eq, desc } from "drizzle-orm";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-export default function Home() {
+export default async function Dashboard() {
+  const [totalClothes] = await db.select({ count: count() }).from(clothes);
+
+  // Fetch active sessions
+  const activeSessionsRaw = await db
+    .select()
+    .from(laundrySessions)
+    .where(eq(laundrySessions.status, "active"))
+    .orderBy(desc(laundrySessions.createdAt));
+
+  // Fetch items for active sessions to get counts
+  const activeSessions = await Promise.all(
+    activeSessionsRaw.map(async (session) => {
+      const items = await db
+        .select()
+        .from(laundryItems)
+        .where(eq(laundryItems.sessionId, session.id));
+      
+      const returnedItemsCount = items.filter((i) => i.isReturned).length;
+      return {
+        ...session,
+        totalItemsCount: items.length,
+        returnedItemsCount,
+      };
+    })
+  );
+
+  // Fetch recent completed sessions (limit 5)
+  const recentCompletedSessionsRaw = await db
+    .select()
+    .from(laundrySessions)
+    .where(eq(laundrySessions.status, "completed"))
+    .orderBy(desc(laundrySessions.createdAt))
+    .limit(5);
+
+  const recentCompletedSessions = await Promise.all(
+    recentCompletedSessionsRaw.map(async (session) => {
+      const [itemsCount] = await db
+        .select({ count: count() })
+        .from(laundryItems)
+        .where(eq(laundryItems.sessionId, session.id));
+        
+      return {
+        ...session,
+        totalItemsCount: itemsCount.count,
+      };
+    })
+  );
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="space-y-6">
+      {/* Accessibility Strategy: Use semantic HTML <h1> for main heading */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        {/* Primary Action Button */}
+        <Link href="/sessions/new">
+          <Button>Start New Laundry Session</Button>
+        </Link>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeSessions.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Clothes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalClothes.count}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Active Sessions List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Sessions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {activeSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No active laundry sessions.</p>
+            ) : (
+              <div className="space-y-4">
+                {activeSessions.map((session) => (
+                  <Link
+                    key={session.id}
+                    href={`/sessions/${session.id}`}
+                    className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`View details for session created on ${session.createdAt.toLocaleDateString()}`}
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium leading-none">
+                        Created on {session.createdAt.toLocaleDateString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {session.returnedItemsCount} of {session.totalItemsCount} items returned
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent History List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentCompletedSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No completed sessions yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {recentCompletedSessions.map((session) => (
+                  <Link
+                    key={session.id}
+                    href={`/sessions/${session.id}`}
+                    className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`View details for completed session from ${session.createdAt.toLocaleDateString()}`}
+                  >
+                    <div className="space-y-1">
+                      <p className="font-medium leading-none">
+                        Completed on {session.createdAt.toLocaleDateString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {session.totalItemsCount} items
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
