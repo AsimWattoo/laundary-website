@@ -3,6 +3,8 @@ import { clothes } from '@/db/schema'
 import { desc } from 'drizzle-orm'
 import { AddClothDialog } from '@/components/AddClothDialog'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * WardrobePage displays the user's inventory of clothes.
  * Fetches clothes from the database and displays them in a responsive grid.

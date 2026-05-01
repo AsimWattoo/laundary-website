@@ -4,9 +4,11 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import ItemChecklist from './ItemChecklist';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,12 +38,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="container max-w-2xl py-8">
-      <Button variant="ghost" asChild className="mb-6">
-        <Link href="/">
-          <ChevronLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Link>
-      </Button>
+      <Link href="/" className={buttonVariants({ variant: "ghost", className: "mb-6" })}>
+        <ChevronLeft className="mr-2 h-4 w-4" />
+        Back to Dashboard
+      </Link>
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">

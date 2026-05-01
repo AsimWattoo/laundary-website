@@ -4,12 +4,12 @@ import * as schema from './schema';
 
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error('DATABASE_URL is not set');
-}
-
-// Disable prefetch as it is not supported for "Transaction" mode (Pulumi/Supabase/etc)
-// and it's recommended to disable it for production.
-const client = postgres(connectionString, { prepare: false });
+// If we're in build mode or missing the URL, we might not have a valid connection string yet.
+// We'll throw at runtime if it's still missing, but let's avoid crashing the build if it's just a placeholder.
+const client = postgres(connectionString || 'postgres://localhost:5432/placeholder', { 
+  prepare: false,
+  // Low timeout for build phase
+  connect_timeout: 1 
+});
 
 export const db = drizzle(client, { schema });

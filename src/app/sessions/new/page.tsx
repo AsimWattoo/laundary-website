@@ -4,6 +4,8 @@ import { SelectionClient } from './SelectionClient'
 import { AddClothDialog } from '@/components/AddClothDialog'
 import { desc } from 'drizzle-orm'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Accessibility Strategy:
  * - Semantic Landmarks: Uses <main> via layout, here using <div> for grouping.
