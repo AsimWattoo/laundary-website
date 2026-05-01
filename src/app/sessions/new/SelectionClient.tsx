@@ -30,12 +30,8 @@ export function SelectionClient({ initialClothes }: SelectionClientProps) {
 
   const handleStartLaundry = async () => {
     setIsPending(true)
-    try {
-      await createLaundrySession(selectedIds)
-    } catch (error) {
-      console.error(error)
-      setIsPending(false)
-    }
+    await createLaundrySession(selectedIds)
+    // No setIsPending(false) here because redirect will happen
   }
 
   const handleKeyDown = (e: React.KeyboardEvent, id: string) => {
