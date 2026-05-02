@@ -1,12 +1,28 @@
 import { pgTable, uuid, text, timestamp, boolean, pgEnum } from 'drizzle-orm/pg-core';
 
 export const sessionStatusEnum = pgEnum('session_status', ['active', 'completed']);
+export const clothTypeEnum = pgEnum('cloth_type', ['shalwar', 'qameez', 'tshirt', 'pant', 'underwear', 'trouser', 'other']);
 
 export const clothes = pgTable('clothes', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   imageUrl: text('image_url').notNull(),
   description: text('description'),
+  type: clothTypeEnum('type').default('other').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const clothingGroups = pgTable('clothing_groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const clothingGroupItems = pgTable('clothing_group_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupId: uuid('group_id').references(() => clothingGroups.id).notNull(),
+  clothId: uuid('cloth_id').references(() => clothes.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

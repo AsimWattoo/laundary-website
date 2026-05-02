@@ -141,7 +141,7 @@ export function DashboardCharts({
                   {statusData.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={index === 0 ? "var(--chart-1)" : "var(--chart-2)"}
+                      fill={index === 0 ? "#3b82f6" : "#eab308"}
                       stroke="transparent"
                     />
                   ))}

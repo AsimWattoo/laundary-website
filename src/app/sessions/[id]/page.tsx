@@ -7,8 +7,24 @@ import ItemChecklist from './ItemChecklist';
 import { buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import type { Metadata } from 'next';
+import SessionActions from './SessionActions';
+import { ClientOnly } from '@/components/ClientOnly';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const session = await db.query.laundrySessions.findFirst({
+    where: eq(laundrySessions.id, id),
+  });
+
+  if (!session) return { title: 'Session Not Found' };
+
+  return {
+    title: `Session ${format(session.createdAt, "PPP")}`,
+  };
+}
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,6 +42,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       cloth: {
         name: clothes.name,
         imageUrl: clothes.imageUrl,
+        type: clothes.type,
       },
     })
     .from(laundryItems)
@@ -43,7 +60,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         Back to Dashboard
       </Link>
 
-      <div className="mb-8">
+      <div className="mb-4">
         <h1 className="text-3xl font-bold mb-2">
           Session: {format(session.startDate, 'PPP')}
         </h1>
@@ -61,7 +78,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         </div>
         
         <div 
-          className="mt-4 w-full bg-secondary rounded-full h-2"
+          className="mt-4 w-full bg-yellow-100 dark:bg-yellow-900/20 rounded-full h-2 overflow-hidden border border-yellow-200/50 dark:border-yellow-800/50"
           role="progressbar"
           aria-valuenow={progress}
           aria-valuemin={0}
@@ -69,13 +86,21 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           aria-label="Laundry return progress"
         >
           <div 
-            className="bg-primary h-2 rounded-full transition-all" 
+            className="bg-blue-500 h-2 rounded-full transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]" 
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <ItemChecklist items={items} />
+      <ClientOnly>
+        <SessionActions 
+          sessionId={id} 
+          initialReturnDate={session.expectedReturnDate} 
+          itemCount={totalCount}
+        />
+
+        <ItemChecklist sessionId={id} items={items} />
+      </ClientOnly>
     </div>
   );
 }

@@ -31,7 +31,7 @@ Transform the Laundry Tracker dashboard into a professional, responsive interfac
         *   **Visual:** Navy line with a light blue gradient area fill.
     2.  **Item Status Distribution (PieChart/Donut):**
         *   **Data:** Count of `isReturned: true` vs `isReturned: false` across all active sessions.
-        *   **Colors:** Navy (`#0f172a`) for Returned, Slate (`#94a3b8`) for Pending.
+        *   **Colors:** Blue (`#3b82f6`) for Returned, Yellow (`#eab308`) for Pending.
     3.  **Most Laundered Items (BarChart):**
         *   **Data:** Top 5 items sorted by frequency in `laundry_items`.
         *   **Visual:** Horizontal bars for better mobile readability.

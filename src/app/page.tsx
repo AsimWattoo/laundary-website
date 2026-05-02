@@ -5,8 +5,14 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DashboardCharts } from "@/components/DashboardCharts";
-import { subDays, format } from "date-fns";
-import { Shirt, Waves, History, ListChecks, Plus } from "lucide-react";
+import { ClientOnly } from "@/components/ClientOnly";
+import { subDays, format, isBefore, startOfToday } from "date-fns";
+import { Shirt, Waves, History, ListChecks, Plus, AlertCircle, Calendar } from "lucide-react";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Dashboard',
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +24,7 @@ export default async function Dashboard() {
     .select({
       id: laundrySessions.id,
       createdAt: laundrySessions.createdAt,
+      expectedReturnDate: laundrySessions.expectedReturnDate,
       totalItemsCount: count(laundryItems.id),
       returnedItemsCount: sql<number>`cast(count(${laundryItems.id}) filter (where ${laundryItems.isReturned} = true) as integer)`,
     })
@@ -27,9 +34,16 @@ export default async function Dashboard() {
     .groupBy(laundrySessions.id)
     .orderBy(desc(laundrySessions.createdAt));
 
+  // Identify overdue sessions
+  const today = startOfToday();
+  const overdueSessions = activeSessions.filter(session => 
+    session.expectedReturnDate && isBefore(new Date(session.expectedReturnDate), today)
+  );
+
   // Aggregations for Charts
   const thirtyDaysAgo = subDays(new Date(), 30);
 
+  // ... rest of the aggregations ...
   // 1. Volume Trend (Last 30 days)
   const trendDataRaw = await db
     .select({
@@ -121,6 +135,37 @@ export default async function Dashboard() {
         </Link>
       </div>
 
+      {/* Overdue Alerts Section */}
+      {overdueSessions.length > 0 && (
+        <section className="space-y-4" aria-labelledby="alerts-heading">
+          <h2 id="alerts-heading" className="text-lg font-semibold flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            Urgent: Overdue Returns
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {overdueSessions.map((session) => (
+              <Link 
+                key={session.id} 
+                href={`/sessions/${session.id}`}
+                className="group flex items-start gap-4 p-4 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors"
+              >
+                <div className="mt-0.5 rounded-full bg-destructive/10 p-2 text-destructive group-hover:bg-destructive/20 transition-colors">
+                  <Calendar className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="font-semibold text-destructive">
+                    Expected {session.expectedReturnDate ? format(new Date(session.expectedReturnDate), "MMM dd") : "N/A"}
+                  </p>
+                  <p className="text-sm text-destructive/80">
+                    {session.totalItemsCount - session.returnedItemsCount} items still missing from {format(session.createdAt, "MMM dd")} session
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="relative overflow-hidden border-muted/40 shadow-sm hover:shadow-md transition-shadow group">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -149,11 +194,13 @@ export default async function Dashboard() {
       </div>
 
       {/* Charts Section */}
-      <DashboardCharts 
-        trendData={trendData} 
-        statusData={statusData} 
-        itemData={itemData} 
-      />
+      <ClientOnly>
+        <DashboardCharts 
+          trendData={trendData} 
+          statusData={statusData} 
+          itemData={itemData} 
+        />
+      </ClientOnly>
 
       <div className="grid gap-8 md:grid-cols-2">
         {/* Active Sessions List */}
@@ -172,29 +219,43 @@ export default async function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {activeSessions.map((session) => (
-                  <Link
-                    key={session.id}
-                    href={`/sessions/${session.id}`}
-                    className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 transition-all hover:translate-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label={`View session created on ${format(session.createdAt, "PPP")}`}
-                  >
-                    <div className="space-y-1">
-                      <p className="font-semibold text-foreground">
-                        {format(session.createdAt, "PPP")}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {session.returnedItemsCount} of {session.totalItemsCount} items returned
-                      </p>
-                    </div>
-                    <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary transition-all" 
-                        style={{ width: `${(session.returnedItemsCount / (session.totalItemsCount || 1)) * 100}%` }}
-                      />
-                    </div>
-                  </Link>
-                ))}
+                {activeSessions.map((session) => {
+                  const isOverdue = session.expectedReturnDate && isBefore(new Date(session.expectedReturnDate), today);
+                  return (
+                    <Link
+                      key={session.id}
+                      href={`/sessions/${session.id}`}
+                      className="flex items-center justify-between p-4 rounded-xl border bg-card hover:bg-muted/50 transition-all hover:translate-x-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`View session created on ${format(session.createdAt, "PPP")}`}
+                    >
+                      <div className="space-y-1">
+                        <p className="font-semibold text-foreground">
+                          {format(session.createdAt, "PPP")}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm text-muted-foreground">
+                            {session.returnedItemsCount} of {session.totalItemsCount} items returned
+                          </p>
+                          {session.expectedReturnDate && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                              isOverdue 
+                                ? "bg-red-50 text-red-600 border-red-100" 
+                                : "bg-blue-50 text-blue-600 border-blue-100"
+                            }`}>
+                              {isOverdue ? "OVERDUE" : `Due ${format(session.expectedReturnDate, "MMM dd")}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="h-2 w-24 bg-muted rounded-full overflow-hidden border">
+                        <div 
+                          className={`h-full transition-all shadow-sm ${isOverdue ? "bg-red-500" : "bg-primary"}`} 
+                          style={{ width: `${(session.returnedItemsCount / (session.totalItemsCount || 1)) * 100}%` }}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

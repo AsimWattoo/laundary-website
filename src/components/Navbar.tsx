@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "./Logo";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +24,7 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: "Dashboard" },
+    { href: "/sessions", label: "Sessions" },
     { href: "/wardrobe", label: "Wardrobe" },
     { href: "/sessions/new", label: "New Session" },
   ];
@@ -36,9 +38,10 @@ export function Navbar() {
       <div className="container mx-auto flex justify-between items-center">
         <Link 
           href="/" 
-          className="text-xl font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary rounded-sm transition-opacity hover:opacity-90"
+          className="flex items-center gap-2 text-xl font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary rounded-sm transition-opacity hover:opacity-90"
         >
-          Laundry Tracker
+          <Logo className="w-8 h-8" />
+          <span>Laundry Tracker</span>
         </Link>
         
         {/* Desktop Links */}
