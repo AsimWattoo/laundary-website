@@ -8,22 +8,35 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export async function createCloth(formData: FormData) {
-  const file = formData.get('image') as File;
-  const name = formData.get('name') as string;
+  try {
+    console.log('Starting createCloth action...');
+    const file = formData.get('image') as File;
+    const name = formData.get('name') as string;
 
-  if (!file || !name) {
-    throw new Error('Missing name or image');
+    if (!file || !name) {
+      console.error('Missing name or image');
+      throw new Error('Missing name or image');
+    }
+
+    console.log(`Uploading file: ${file.name}, size: ${file.size}`);
+    const blob = await put(file.name, file, { 
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN
+    });
+    console.log('File uploaded successfully:', blob.url);
+
+    await db.insert(clothes).values({
+      name,
+      imageUrl: blob.url,
+    });
+    console.log('Database entry created');
+
+    revalidatePath('/wardrobe');
+    revalidatePath('/sessions/new');
+  } catch (error) {
+    console.error('Error in createCloth:', error);
+    throw error;
   }
-
-  const blob = await put(file.name, file, { access: 'public' });
-
-  await db.insert(clothes).values({
-    name,
-    imageUrl: blob.url,
-  });
-
-  revalidatePath('/wardrobe');
-  revalidatePath('/sessions/new');
 }
 
 export async function createLaundrySession(clothIds: string[]) {
@@ -31,7 +44,9 @@ export async function createLaundrySession(clothIds: string[]) {
     throw new Error('No clothes selected');
   }
 
-  const [session] = await db.insert(laundrySessions).values({}).returning();
+  const [session] = await db.insert(laundrySessions).values({
+    status: 'active'
+  }).returning();
 
   await db.insert(laundryItems).values(
     clothIds.map((clothId) => ({

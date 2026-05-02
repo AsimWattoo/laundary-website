@@ -34,16 +34,29 @@ export function DashboardCharts({
   statusData,
   itemData,
 }: DashboardChartsProps) {
+  // Accessibility: Prepare text summaries for screen readers
+  const totalVolume = trendData.reduce((acc, curr) => acc + curr.count, 0);
+  const topItem = itemData.length > 0 ? itemData[0] : null;
+
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {/* Volume Trend - AreaChart */}
-      <Card className="lg:col-span-2">
+      <Card className="lg:col-span-2 shadow-sm border-muted/40">
         <CardHeader>
-          <CardTitle>Laundry Volume Trend</CardTitle>
+          <CardTitle className="text-xl font-semibold">Laundry Volume Trend</CardTitle>
           <CardDescription>Number of sessions over the last 30 days</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
+          {/* Accessibility: Screen reader only description */}
+          <div className="sr-only">
+            Trend chart showing laundry volume. Total sessions in the last 30 days: {totalVolume}.
+            {trendData.length > 0 && `Latest entry on ${trendData[trendData.length - 1].date}: ${trendData[trendData.length - 1].count} sessions.`}
+          </div>
+          <div 
+            className="h-[300px] w-full" 
+            role="img" 
+            aria-label={`Laundry volume trend chart. Total sessions: ${totalVolume}`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={trendData}
@@ -62,6 +75,7 @@ export function DashboardCharts({
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: 'var(--muted-foreground)' }}
                 />
                 <YAxis 
                   stroke="var(--muted-foreground)" 
@@ -69,21 +83,25 @@ export function DashboardCharts({
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(value) => `${value}`}
+                  tick={{ fill: 'var(--muted-foreground)' }}
                 />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: "var(--card)", 
                     borderColor: "var(--border)",
                     color: "var(--foreground)",
-                    borderRadius: "var(--radius)"
+                    borderRadius: "var(--radius)",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
                   }} 
                 />
                 <Area
                   type="monotone"
                   dataKey="count"
                   stroke="var(--chart-1)"
+                  strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#colorCount)"
+                  animationDuration={1500}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -92,13 +110,22 @@ export function DashboardCharts({
       </Card>
 
       {/* Item Status - PieChart */}
-      <Card>
+      <Card className="shadow-sm border-muted/40">
         <CardHeader>
-          <CardTitle>Item Status</CardTitle>
-          <CardDescription>Distribution of returned vs pending items</CardDescription>
+          <CardTitle className="text-xl font-semibold">Item Status</CardTitle>
+          <CardDescription>Returned vs pending items</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
+          {/* Accessibility: Screen reader only description */}
+          <div className="sr-only">
+            Pie chart showing item status distribution. 
+            {statusData.map(s => `${s.name}: ${s.value}`).join(", ")}
+          </div>
+          <div 
+            className="h-[300px] w-full" 
+            role="img" 
+            aria-label={`Item status distribution. ${statusData.map(s => `${s.name}: ${s.value}`).join(", ")}`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -109,9 +136,14 @@ export function DashboardCharts({
                   outerRadius={80}
                   paddingAngle={5}
                   dataKey="value"
+                  animationDuration={1000}
                 >
                   {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? "var(--chart-1)" : "var(--chart-2)"} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={index === 0 ? "var(--chart-1)" : "var(--chart-2)"}
+                      stroke="transparent"
+                    />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -119,10 +151,15 @@ export function DashboardCharts({
                     backgroundColor: "var(--card)", 
                     borderColor: "var(--border)",
                     color: "var(--foreground)",
-                    borderRadius: "var(--radius)"
+                    borderRadius: "var(--radius)",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
                   }} 
                 />
-                <Legend verticalAlign="bottom" height={36}/>
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  formatter={(value) => <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{value}</span>}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -130,13 +167,22 @@ export function DashboardCharts({
       </Card>
 
       {/* Most Laundered - BarChart */}
-      <Card className="lg:col-span-3">
+      <Card className="lg:col-span-3 shadow-sm border-muted/40">
         <CardHeader>
-          <CardTitle>Most Laundered Items</CardTitle>
-          <CardDescription>Frequency of specific clothes in laundry sessions</CardDescription>
+          <CardTitle className="text-xl font-semibold">Most Laundered Items</CardTitle>
+          <CardDescription>Frequency of clothes in sessions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] w-full">
+          {/* Accessibility: Screen reader only description */}
+          <div className="sr-only">
+            Bar chart of most laundered items. 
+            {topItem && `Top item is ${topItem.name} with ${topItem.count} appearances.`}
+          </div>
+          <div 
+            className="h-[300px] w-full" 
+            role="img" 
+            aria-label={`Most laundered items chart. ${topItem ? `Top: ${topItem.name}` : ""}`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={itemData}
@@ -149,23 +195,32 @@ export function DashboardCharts({
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: 'var(--muted-foreground)' }}
                 />
                 <YAxis 
                   stroke="var(--muted-foreground)" 
                   fontSize={12}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: 'var(--muted-foreground)' }}
                 />
                 <Tooltip 
-                  cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+                  cursor={{ fill: "var(--muted)", opacity: 0.2 }}
                   contentStyle={{ 
                     backgroundColor: "var(--card)", 
                     borderColor: "var(--border)",
                     color: "var(--foreground)",
-                    borderRadius: "var(--radius)"
+                    borderRadius: "var(--radius)",
+                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)"
                   }} 
                 />
-                <Bar dataKey="count" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+                <Bar 
+                  dataKey="count" 
+                  fill="var(--chart-1)" 
+                  radius={[6, 6, 0, 0]} 
+                  barSize={40}
+                  animationDuration={1200}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
