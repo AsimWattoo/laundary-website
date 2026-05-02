@@ -335,7 +335,7 @@ export function WardrobeClient({ initialClothes, allClothes, initialGroups, q }:
           <DialogHeader>
             <DialogTitle>Delete Clothing Group</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the group <strong>"{groupToDelete?.name}"</strong>? This will only delete the group organization, not the individual clothing items.
+              Are you sure you want to delete the group <strong>&quot;{groupToDelete?.name}&quot;</strong>? This will only delete the group organization, not the individual clothing items.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

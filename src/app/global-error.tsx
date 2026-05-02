@@ -1,7 +1,6 @@
 'use client';
 
 export default function GlobalError({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -9,7 +8,7 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body className="flex flex-col items-center justify-center min-h-screen text-center p-4 font-sans">
+      <body className="flex flex-col items-center justify-center min-h-screen text-center p-4 font-sans bg-background text-foreground">
         <h1 className="text-3xl font-bold mb-4">Something went wrong!</h1>
         <p className="text-muted-foreground mb-6">
           A critical error occurred. Please try refreshing the application.
