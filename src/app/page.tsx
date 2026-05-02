@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { clothes, laundryItems, laundrySessions } from "@/db/schema";
-import { count, eq, desc } from "drizzle-orm";
+import { count, eq, desc, gte, sql } from "drizzle-orm";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DashboardCharts } from "@/components/DashboardCharts";
+import { subDays, format } from "date-fns";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +26,7 @@ export default async function Dashboard() {
         .select()
         .from(laundryItems)
         .where(eq(laundryItems.sessionId, session.id));
-      
+
       const returnedItemsCount = items.filter((i) => i.isReturned).length;
       return {
         ...session,
@@ -33,6 +35,67 @@ export default async function Dashboard() {
       };
     })
   );
+
+  // Aggregations for Charts
+  const thirtyDaysAgo = subDays(new Date(), 30);
+
+  // 1. Volume Trend (Last 30 days)
+  const trendDataRaw = await db
+    .select({
+      date: sql<string>`DATE(${laundrySessions.createdAt})`,
+      count: count(),
+    })
+    .from(laundrySessions)
+    .where(gte(laundrySessions.createdAt, thirtyDaysAgo))
+    .groupBy(sql`DATE(${laundrySessions.createdAt})`)
+    .orderBy(sql`DATE(${laundrySessions.createdAt})`);
+
+  const trendData = Array.from({ length: 30 }, (_, i) => {
+    const d = subDays(new Date(), 29 - i);
+    const dateStr = format(d, "yyyy-MM-dd");
+    const label = format(d, "MMM dd");
+    const dayData = trendDataRaw.find(entry => {
+      // Postgres DATE() might return a string in yyyy-MM-dd format or a Date object
+      const entryDate = entry.date instanceof Date ? format(entry.date, "yyyy-MM-dd") : entry.date;
+      return entryDate === dateStr;
+    });
+    return {
+      date: label,
+      count: dayData ? Number(dayData.count) : 0,
+    };
+  });
+
+  // 2. Status Distribution
+  const [returnedCount] = await db
+    .select({ count: count() })
+    .from(laundryItems)
+    .where(eq(laundryItems.isReturned, true));
+  const [pendingCount] = await db
+    .select({ count: count() })
+    .from(laundryItems)
+    .where(eq(laundryItems.isReturned, false));
+
+  const statusData = [
+    { name: "Returned", value: returnedCount.count },
+    { name: "Pending", value: pendingCount.count },
+  ];
+
+  // 3. Most Laundered Items
+  const itemDataRaw = await db
+    .select({
+      name: clothes.name,
+      count: count(),
+    })
+    .from(laundryItems)
+    .innerJoin(clothes, eq(laundryItems.clothId, clothes.id))
+    .groupBy(clothes.name)
+    .orderBy(desc(count()))
+    .limit(10);
+
+  const itemData = itemDataRaw.map(item => ({
+    name: item.name,
+    count: Number(item.count),
+  }));
 
   // Fetch recent completed sessions (limit 5)
   const recentCompletedSessionsRaw = await db
@@ -48,7 +111,7 @@ export default async function Dashboard() {
         .select({ count: count() })
         .from(laundryItems)
         .where(eq(laundryItems.sessionId, session.id));
-        
+
       return {
         ...session,
         totalItemsCount: itemsCount.count,
@@ -57,11 +120,9 @@ export default async function Dashboard() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Accessibility Strategy: Use semantic HTML <h1> for main heading */}
+    <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        {/* Primary Action Button */}
         <Link href="/sessions/new">
           <Button>Start New Laundry Session</Button>
         </Link>
@@ -85,6 +146,13 @@ export default async function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Charts Section */}
+      <DashboardCharts 
+        trendData={trendData} 
+        statusData={statusData} 
+        itemData={itemData} 
+      />
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Active Sessions List */}
