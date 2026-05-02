@@ -92,9 +92,19 @@ export function SelectionClient({ initialClothes, initialGroups }: SelectionClie
               return (
                 <div
                   key={group.id}
+                  role="button"
+                  tabIndex={isDisabled ? -1 : 0}
+                  aria-pressed={isSelected}
+                  aria-disabled={isDisabled}
                   onClick={() => !isDisabled && toggleGroup(group.itemIds)}
+                  onKeyDown={(e) => {
+                    if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      toggleGroup(group.itemIds)
+                    }
+                  }}
                   className={cn(
-                    "group relative p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2",
+                    "group relative p-4 rounded-xl border-2 transition-all text-center flex flex-col items-center justify-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     isDisabled ? "opacity-50 grayscale cursor-not-allowed border-dashed bg-muted/20" : "cursor-pointer hover:border-primary/50 bg-card",
                     isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-transparent border-muted/50"
                   )}
@@ -136,16 +146,25 @@ export function SelectionClient({ initialClothes, initialGroups }: SelectionClie
             return (
               <div
                 key={cloth.id}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isSelected}
                 onClick={() => toggleSelection(cloth.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggleSelection(cloth.id)
+                  }
+                }}
                 className={cn(
-                  "group relative cursor-pointer rounded-xl border-2 bg-card p-2 transition-all hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  "group relative cursor-pointer rounded-xl border-2 bg-card p-2 transition-all hover:border-primary/50 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                   isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-transparent"
                 )}
               >
                 <div className="aspect-square overflow-hidden rounded-lg mb-2 bg-muted">
                   <img
                     src={cloth.imageUrl}
-                    alt=""
+                    alt={`Photo of ${cloth.name}`}
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
                 </div>

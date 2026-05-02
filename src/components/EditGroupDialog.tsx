@@ -13,24 +13,33 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createClothingGroup } from '@/lib/actions'
-import { Layers, Loader2, Check } from 'lucide-react'
+import { updateClothingGroup } from '@/lib/actions'
+import { Pencil, Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-interface AddGroupDialogProps {
-  clothes: {
-    id: string
-    name: string
-    imageUrl: string
-  }[]
+interface Cloth {
+  id: string
+  name: string
+  imageUrl: string
 }
 
-export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
+interface EditGroupDialogProps {
+  group: {
+    id: string
+    name: string
+    items: Cloth[]
+  }
+  allClothes: Cloth[]
+}
+
+export function EditGroupDialog({ group, allClothes }: EditGroupDialogProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [name, setName] = useState('')
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [name, setName] = useState(group.name)
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    group.items.map((item) => item.id)
+  )
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) =>
@@ -38,7 +47,7 @@ export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
     )
   }
 
-  const handleCreateGroup = () => {
+  const handleUpdateGroup = () => {
     if (!name || selectedIds.length === 0) {
       toast.error('Please provide a name and select at least one item.')
       return
@@ -46,14 +55,12 @@ export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
 
     startTransition(async () => {
       try {
-        await createClothingGroup(name, selectedIds)
+        await updateClothingGroup(group.id, name, selectedIds)
         setOpen(false)
-        setName('')
-        setSelectedIds([])
-        toast.success('Group created successfully!')
+        toast.success('Group updated successfully!')
       } catch (error) {
-        console.error('Failed to create group:', error)
-        toast.error('Failed to create group. Please try again.')
+        console.error('Failed to update group:', error)
+        toast.error('Failed to update group. Please try again.')
       }
     })
   }
@@ -62,24 +69,24 @@ export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button variant="outline">
-            <Layers className="mr-2 h-4 w-4" aria-hidden="true" />
-            Create Group
+          <Button variant="secondary" size="icon" className="h-8 w-8 bg-black/50 hover:bg-black/70 border-none backdrop-blur-sm text-white rounded-md transition-all shadow-md">
+            <Pencil className="h-4 w-4" />
+            <span className="sr-only">Edit Group</span>
           </Button>
         }
       />
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Create Clothing Group</DialogTitle>
+          <DialogTitle>Edit Clothing Group</DialogTitle>
           <DialogDescription>
-            Combine items (e.g., Shalwar + Qameez) into a single group for easier laundry management.
+            Update the items in this group or change its name.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="group-name">Group Name</Label>
+            <Label htmlFor="edit-group-name">Group Name</Label>
             <Input
-              id="group-name"
+              id="edit-group-name"
               placeholder="e.g., Shalwar Qameez Set"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -87,14 +94,14 @@ export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
             />
           </div>
           <div className="grid gap-2">
-            <Label id="add-group-select-items-label">Select Items</Label>
+            <Label id={`edit-group-select-items-label-${group.id}`}>Select Items</Label>
             <div 
               className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto p-1"
               role="listbox"
-              aria-labelledby="add-group-select-items-label"
+              aria-labelledby={`edit-group-select-items-label-${group.id}`}
               aria-multiselectable="true"
             >
-              {clothes.map((item) => {
+              {allClothes.map((item) => {
                 const isSelected = selectedIds.includes(item.id)
                 return (
                   <div
@@ -139,14 +146,14 @@ export function AddGroupDialog({ clothes }: AddGroupDialogProps) {
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
             Cancel
           </Button>
-          <Button onClick={handleCreateGroup} disabled={isPending || !name || selectedIds.length === 0}>
+          <Button onClick={handleUpdateGroup} disabled={isPending || !name || selectedIds.length === 0}>
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
+                Updating...
               </>
             ) : (
-              'Create Group'
+              'Save Changes'
             )}
           </Button>
         </DialogFooter>

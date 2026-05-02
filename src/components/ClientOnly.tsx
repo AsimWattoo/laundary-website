@@ -1,11 +1,11 @@
 'use client';
 
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function ClientOnly({ children }: { children: React.ReactNode }) {
   const [hasMounted, setHasMounted] = useState(false);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     setHasMounted(true);
   }, []);
 

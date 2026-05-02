@@ -5,6 +5,7 @@ import { Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deleteCloth } from '@/lib/actions'
 import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -18,9 +19,10 @@ import {
 interface DeleteClothButtonProps {
   clothId: string
   clothName: string
+  className?: string
 }
 
-export function DeleteClothButton({ clothId, clothName }: DeleteClothButtonProps) {
+export function DeleteClothButton({ clothId, clothName, className }: DeleteClothButtonProps) {
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -44,7 +46,10 @@ export function DeleteClothButton({ clothId, clothName }: DeleteClothButtonProps
           <Button
             variant="outline"
             size="sm"
-            className="absolute top-2 right-2 h-7 px-2 bg-white/90 text-red-600 hover:bg-white hover:text-red-700 shadow-sm border-none backdrop-blur-sm"
+            className={cn(
+              "h-7 px-2 bg-white/90 text-red-600 hover:bg-white hover:text-red-700 shadow-sm border-none backdrop-blur-sm",
+              className
+            )}
             aria-label={`Delete ${clothName}`}
           >
             <Trash2 className="h-3.5 w-3.5 mr-1" />

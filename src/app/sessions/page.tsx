@@ -51,10 +51,10 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
   }));
 
   return (
-    <main className="container mx-auto py-10 px-4">
+    <div className="py-6">
       <ClientOnly>
         <SessionsClient initialSessions={initialSessions} q={q} />
       </ClientOnly>
-    </main>
+    </div>
   );
 }

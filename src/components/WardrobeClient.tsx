@@ -3,12 +3,15 @@
 import { useState, useTransition } from 'react'
 import { AddClothDialog } from '@/components/AddClothDialog'
 import { AddGroupDialog } from '@/components/AddGroupDialog'
+import { EditClothDialog } from '@/components/EditClothDialog'
+import { EditGroupDialog } from '@/components/EditGroupDialog'
 import { DeleteClothButton } from '@/components/DeleteClothButton'
+import { GroupCollage } from '@/components/GroupCollage'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/SearchBar'
-import { Trash2, Loader2, CheckSquare, Square, Tag } from 'lucide-react'
-import { deleteClothesBulk } from '@/lib/actions'
+import { Trash2, Loader2, CheckSquare, Square, Tag, LayoutGrid, Layers } from 'lucide-react'
+import { deleteClothesBulk, deleteClothingGroup } from '@/lib/actions'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -21,13 +24,31 @@ interface WardrobeClientProps {
     imageUrl: string
     type: string
   }[]
+  allClothes: {
+    id: string
+    name: string
+    imageUrl: string
+    type: string
+  }[]
+  initialGroups: {
+    id: string
+    name: string
+    items: {
+      id: string
+      name: string
+      imageUrl: string
+      type: string
+    }[]
+  }[]
   q?: string
 }
 
-export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
+export function WardrobeClient({ initialClothes, allClothes, initialGroups, q }: WardrobeClientProps) {
+  const [activeTab, setActiveTab] = useState<'items' | 'groups'>('items')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isPending, startTransition] = useTransition()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [groupToDelete, setGroupToDelete] = useState<{ id: string, name: string } | null>(null)
 
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) =>
@@ -57,16 +78,30 @@ export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
     })
   }
 
+  const handleDeleteGroup = () => {
+    if (!groupToDelete) return
+    startTransition(async () => {
+      try {
+        await deleteClothingGroup(groupToDelete.id)
+        toast.success(`Group "${groupToDelete.name}" deleted successfully`)
+        setGroupToDelete(null)
+      } catch (error) {
+        console.error('Failed to delete group:', error)
+        toast.error('Failed to delete group. Please try again.')
+      }
+    })
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight">My Wardrobe</h1>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
           <ClientOnly>
-            <SearchBar defaultValue={q} placeholder="Search clothes..." />
+            <SearchBar defaultValue={q} placeholder={`Search ${activeTab}...`} />
           </ClientOnly>
           <div className="flex items-center gap-2">
-            {initialClothes.length > 0 && (
+            {activeTab === 'items' && initialClothes.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
@@ -81,14 +116,50 @@ export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
                 {selectedIds.length === initialClothes.length ? 'Deselect All' : 'Select All'}
               </Button>
             )}
-            <AddGroupDialog clothes={initialClothes} />
+            <AddGroupDialog clothes={allClothes} />
             <AddClothDialog />
           </div>
         </div>
       </div>
 
-      {/* Bulk Action Bar */}
-      {selectedIds.length > 0 && (
+      {/* Tab Switcher */}
+      <div className="flex bg-muted/50 p-1 rounded-xl w-fit border shadow-sm" role="tablist" aria-label="Wardrobe views">
+        <button
+          onClick={() => setActiveTab('items')}
+          role="tab"
+          aria-selected={activeTab === 'items'}
+          aria-controls="items-panel"
+          id="tab-items"
+          className={cn(
+            "flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            activeTab === 'items'
+              ? "bg-primary text-primary-foreground shadow-md scale-105"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <LayoutGrid className="h-4 w-4" />
+          Items
+        </button>
+        <button
+          onClick={() => setActiveTab('groups')}
+          role="tab"
+          aria-selected={activeTab === 'groups'}
+          aria-controls="groups-panel"
+          id="tab-groups"
+          className={cn(
+            "flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+            activeTab === 'groups'
+              ? "bg-primary text-primary-foreground shadow-md scale-105"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <Layers className="h-4 w-4" />
+          Groups
+        </button>
+      </div>
+
+      {/* Bulk Action Bar - Only for items */}
+      {activeTab === 'items' && selectedIds.length > 0 && (
         <div className="sticky top-4 z-30 flex items-center justify-between p-4 bg-primary text-primary-foreground rounded-xl shadow-lg animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-2">
             <CheckSquare className="h-5 w-5" />
@@ -142,21 +213,31 @@ export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
         </div>
       )}
 
-      {initialClothes.length === 0 ? (
+      {/* Grid Display */}
+      {((activeTab === 'items' && initialClothes.length === 0) || (activeTab === 'groups' && initialGroups.length === 0)) ? (
         <div 
           className="flex flex-col items-center justify-center py-20 bg-muted/20 rounded-lg border-2 border-dashed"
           role="status"
-          aria-label="Empty wardrobe"
+          aria-label={activeTab === 'items' ? "Empty wardrobe" : "No groups"}
         >
           <p className="text-muted-foreground text-lg">
-            {q ? `No clothes found matching "${q}"` : "Your wardrobe is empty."}
+            {q 
+              ? `No ${activeTab} found matching "${q}"` 
+              : activeTab === 'items' ? "Your wardrobe is empty." : "No clothing groups yet."}
           </p>
           <p className="text-muted-foreground">
-            {q ? "Try a different search term or clear the search." : "Add your first piece of clothing to get started!"}
+            {q 
+              ? "Try a different search term or clear the search." 
+              : activeTab === 'items' ? "Add your first piece of clothing to get started!" : "Create a group to organize your clothes!"}
           </p>
         </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      ) : activeTab === 'items' ? (
+        <div 
+          id="items-panel"
+          role="tabpanel"
+          aria-labelledby="tab-items"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+        >
           {initialClothes.map((cloth) => {
             const isSelected = selectedIds.includes(cloth.id)
             return (
@@ -190,7 +271,10 @@ export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
                     className="absolute top-2 left-2 h-5 w-5 bg-white data-[state=checked]:bg-primary shadow-sm"
                   />
                   
-                  <DeleteClothButton clothId={cloth.id} clothName={cloth.name} />
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <EditClothDialog cloth={cloth} />
+                    <DeleteClothButton clothId={cloth.id} clothName={cloth.name} />
+                  </div>
 
                   <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded-md flex items-center gap-1">
                     <Tag className="h-3 w-3 text-white/70" />
@@ -204,7 +288,73 @@ export function WardrobeClient({ initialClothes, q }: WardrobeClientProps) {
             )
           })}
         </div>
+      ) : (
+        <div 
+          id="groups-panel"
+          role="tabpanel"
+          aria-labelledby="tab-groups"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"
+        >
+          {initialGroups.map((group) => (
+            <div 
+              key={group.id} 
+              className="group relative bg-card rounded-lg border shadow-sm overflow-hidden transition-all hover:shadow-md"
+            >
+              <div className="aspect-square relative overflow-hidden bg-muted">
+                <GroupCollage images={group.items.map(i => i.imageUrl)} className="w-full h-full" />
+                
+                <div className="absolute top-2 right-2 flex items-center gap-1">
+                  <EditGroupDialog group={group} allClothes={allClothes} />
+                  <Button 
+                    variant="secondary" 
+                    size="icon" 
+                    onClick={() => setGroupToDelete({ id: group.id, name: group.name })}
+                    className="h-8 w-8 bg-black/50 hover:bg-destructive border-none backdrop-blur-sm text-white rounded-md transition-all shadow-md"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete Group</span>
+                  </Button>
+                </div>
+
+                <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded-md flex items-center gap-1">
+                  <Layers className="h-3 w-3 text-white/70" />
+                  <span className="text-[10px] text-white font-medium uppercase tracking-wider">{group.items.length} items</span>
+                </div>
+              </div>
+              <div className="p-3">
+                <h3 className="font-medium truncate" title={group.name}>{group.name}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
+
+      {/* Group Deletion Confirmation Dialog */}
+      <Dialog open={!!groupToDelete} onOpenChange={(open) => !open && setGroupToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Clothing Group</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the group <strong>"{groupToDelete?.name}"</strong>? This will only delete the group organization, not the individual clothing items.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGroupToDelete(null)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteGroup} disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Group'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

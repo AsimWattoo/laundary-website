@@ -1,4 +1,5 @@
 import { pgTable, uuid, text, timestamp, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 export const sessionStatusEnum = pgEnum('session_status', ['active', 'completed']);
 export const clothTypeEnum = pgEnum('cloth_type', ['shalwar', 'qameez', 'tshirt', 'pant', 'underwear', 'trouser', 'other']);
@@ -12,6 +13,11 @@ export const clothes = pgTable('clothes', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const clothesRelations = relations(clothes, ({ many }) => ({
+  groupItems: many(clothingGroupItems),
+  laundryItems: many(laundryItems),
+}));
+
 export const clothingGroups = pgTable('clothing_groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -19,12 +25,27 @@ export const clothingGroups = pgTable('clothing_groups', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const clothingGroupsRelations = relations(clothingGroups, ({ many }) => ({
+  items: many(clothingGroupItems),
+}));
+
 export const clothingGroupItems = pgTable('clothing_group_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   groupId: uuid('group_id').references(() => clothingGroups.id).notNull(),
   clothId: uuid('cloth_id').references(() => clothes.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const clothingGroupItemsRelations = relations(clothingGroupItems, ({ one }) => ({
+  group: one(clothingGroups, {
+    fields: [clothingGroupItems.groupId],
+    references: [clothingGroups.id],
+  }),
+  cloth: one(clothes, {
+    fields: [clothingGroupItems.clothId],
+    references: [clothes.id],
+  }),
+}));
 
 export const laundrySessions = pgTable('laundry_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -34,6 +55,10 @@ export const laundrySessions = pgTable('laundry_sessions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const laundrySessionsRelations = relations(laundrySessions, ({ many }) => ({
+  items: many(laundryItems),
+}));
+
 export const laundryItems = pgTable('laundry_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   sessionId: uuid('session_id').references(() => laundrySessions.id).notNull(),
@@ -41,3 +66,14 @@ export const laundryItems = pgTable('laundry_items', {
   isReturned: boolean('is_returned').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const laundryItemsRelations = relations(laundryItems, ({ one }) => ({
+  session: one(laundrySessions, {
+    fields: [laundryItems.sessionId],
+    references: [laundrySessions.id],
+  }),
+  cloth: one(clothes, {
+    fields: [laundryItems.clothId],
+    references: [clothes.id],
+  }),
+}));

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Toaster as SonnerToaster } from 'sonner';
 
 export function Toaster() {
   const [mounted, setMounted] = useState(false);
@@ -11,7 +12,5 @@ export function Toaster() {
 
   if (!mounted) return null;
 
-  // Dynamically import Sonner only on the client
-  const { Toaster: SonnerToaster } = require('sonner');
   return <SonnerToaster position="bottom-right" richColors />;
 }

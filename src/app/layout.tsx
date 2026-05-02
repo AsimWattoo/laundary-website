@@ -3,6 +3,13 @@ import { Navbar } from '@/components/Navbar';
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import { ClientOnly } from '@/components/ClientOnly';
+import { Mona_Sans } from 'next/font/google';
+
+const monaSans = Mona_Sans({
+  subsets: ['latin'],
+  variable: '--font-mona-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Laundry Tracker',
@@ -12,7 +19,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-background text-foreground">
+      <body className={`${monaSans.variable} font-sans min-h-screen bg-background text-foreground`}>
         <a 
           href="#main-content" 
           className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-4 focus:bg-background focus:border-b"

@@ -8,8 +8,8 @@ const connectionString = process.env.DATABASE_URL;
 // We'll throw at runtime if it's still missing, but let's avoid crashing the build if it's just a placeholder.
 const client = postgres(connectionString || 'postgres://localhost:5432/placeholder', { 
   prepare: false,
-  // Low timeout for build phase
-  connect_timeout: 1 
+  // Standard timeout for stable connection
+  connect_timeout: 10 
 });
 
 export const db = drizzle(client, { schema });

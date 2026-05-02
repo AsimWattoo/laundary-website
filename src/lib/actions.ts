@@ -1,6 +1,6 @@
 'use server'
 
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { db } from '@/db';
 import { clothes, laundryItems, laundrySessions, clothingGroups, clothingGroupItems } from '@/db/schema';
 import { eq, inArray, and } from 'drizzle-orm';
@@ -20,9 +20,10 @@ export async function createCloth(formData: FormData) {
     }
 
     console.log(`Uploading file: ${file.name}, size: ${file.size}`);
-    const blob = await put(file.name, file, { 
+    const blob = await put(`laundry-tracker/${file.name}`, file, { 
       access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+      addRandomSuffix: true
     });
     console.log('File uploaded successfully:', blob.url);
 
@@ -37,6 +38,54 @@ export async function createCloth(formData: FormData) {
     revalidatePath('/sessions/new');
   } catch (error) {
     console.error('Error in createCloth:', error);
+    throw error;
+  }
+}
+
+export async function updateCloth(id: string, formData: FormData) {
+  try {
+    const name = formData.get('name') as string;
+    const type = formData.get('type') as 'shalwar' | 'qameez' | 'tshirt' | 'pant' | 'underwear' | 'trouser' | 'other';
+    const file = formData.get('image') as File | null;
+
+    let imageUrl: string | undefined;
+
+    if (file && file.size > 0) {
+      // 1. Get the current cloth to find the old imageUrl
+      const [currentCloth] = await db.select().from(clothes).where(eq(clothes.id, id));
+      
+      // 2. Upload the new image
+      const blob = await put(`laundry-tracker/${file.name}`, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+        addRandomSuffix: true
+      });
+      imageUrl = blob.url;
+
+      // 3. Delete the old blob if it exists
+      if (currentCloth?.imageUrl) {
+        console.log('Deleting old blob:', currentCloth.imageUrl);
+        try {
+          await del(currentCloth.imageUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+        } catch (delError) {
+          console.error('Failed to delete old blob:', delError);
+          // We continue even if deletion fails to ensure the DB update goes through
+        }
+      }
+    }
+
+    await db.update(clothes)
+      .set({
+        name,
+        type: type || 'other',
+        ...(imageUrl && { imageUrl }),
+      })
+      .where(eq(clothes.id, id));
+
+    revalidatePath('/wardrobe');
+    revalidatePath('/sessions/new');
+  } catch (error) {
+    console.error('Error in updateCloth:', error);
     throw error;
   }
 }
@@ -65,6 +114,37 @@ export async function createClothingGroup(name: string, clothIds: string[]) {
   }
 }
 
+export async function updateClothingGroup(id: string, name: string, clothIds: string[]) {
+  try {
+    await db.transaction(async (tx) => {
+      // 1. Update the group name
+      await tx.update(clothingGroups)
+        .set({ name })
+        .where(eq(clothingGroups.id, id));
+
+      // 2. Delete existing items for that group
+      await tx.delete(clothingGroupItems)
+        .where(eq(clothingGroupItems.groupId, id));
+
+      // 3. Insert new items for that group
+      if (clothIds.length > 0) {
+        await tx.insert(clothingGroupItems).values(
+          clothIds.map(clothId => ({
+            groupId: id,
+            clothId,
+          }))
+        );
+      }
+    });
+
+    revalidatePath('/wardrobe');
+    revalidatePath('/sessions/new');
+  } catch (error) {
+    console.error('Error in updateClothingGroup:', error);
+    throw error;
+  }
+}
+
 export async function deleteClothingGroup(groupId: string) {
   try {
     await db.delete(clothingGroupItems).where(eq(clothingGroupItems.groupId, groupId));
@@ -79,11 +159,21 @@ export async function deleteClothingGroup(groupId: string) {
 
 export async function deleteCloth(clothId: string) {
   try {
-    // Delete associated group items first
+    // 1. Get the cloth to find the imageUrl for Vercel Blob deletion
+    const [cloth] = await db.select().from(clothes).where(eq(clothes.id, clothId));
+    
+    if (cloth?.imageUrl) {
+      console.log('Deleting blob:', cloth.imageUrl);
+      await del(cloth.imageUrl, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    }
+
+    // 2. Delete associated group items first
     await db.delete(clothingGroupItems).where(eq(clothingGroupItems.clothId, clothId));
-    // Delete associated laundry items first to avoid FK constraint errors
+    // 3. Delete associated laundry items first to avoid FK constraint errors
     await db.delete(laundryItems).where(eq(laundryItems.clothId, clothId));
+    // 4. Delete the cloth itself
     await db.delete(clothes).where(eq(clothes.id, clothId));
+    
     revalidatePath('/wardrobe');
     revalidatePath('/sessions/new');
     revalidatePath('/');
@@ -96,8 +186,24 @@ export async function deleteCloth(clothId: string) {
 export async function deleteClothesBulk(clothIds: string[]) {
   try {
     if (clothIds.length === 0) return;
+
+    // 1. Get all images for bulk deletion from Vercel Blob
+    const clothesToDelete = await db.select().from(clothes).where(inArray(clothes.id, clothIds));
+    const urlsToDelete = clothesToDelete
+      .map(c => c.imageUrl)
+      .filter((url): url is string => !!url);
+
+    if (urlsToDelete.length > 0) {
+      console.log('Bulk deleting blobs:', urlsToDelete);
+      await del(urlsToDelete, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    }
+
+    // 2. Delete database records
+    // Delete associated group items first to avoid FK constraint errors
+    await db.delete(clothingGroupItems).where(inArray(clothingGroupItems.clothId, clothIds));
     await db.delete(laundryItems).where(inArray(laundryItems.clothId, clothIds));
     await db.delete(clothes).where(inArray(clothes.id, clothIds));
+    
     revalidatePath('/wardrobe');
     revalidatePath('/sessions/new');
     revalidatePath('/');
