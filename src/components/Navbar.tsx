@@ -30,13 +30,13 @@ export function Navbar() {
   return (
     /* Accessibility: Use semantic <nav> landmark */
     <nav 
-      className="border-b px-4 py-3 sticky top-0 bg-background/95 backdrop-blur z-50"
+      className="border-b px-4 py-3 sticky top-0 bg-primary shadow-md z-50"
       aria-label="Main Navigation"
     >
       <div className="container mx-auto flex justify-between items-center">
         <Link 
           href="/" 
-          className="text-xl font-bold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm"
+          className="text-xl font-bold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary rounded-sm transition-opacity hover:opacity-90"
         >
           Laundry Tracker
         </Link>
@@ -48,8 +48,10 @@ export function Navbar() {
               key={link.href}
               href={link.href} 
               className={cn(
-                "hover:text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm",
-                pathname === link.href ? "text-primary" : "text-muted-foreground"
+                "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary rounded-sm px-2 py-1",
+                pathname === link.href 
+                  ? "text-primary-foreground bg-white/10" 
+                  : "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/5"
               )}
               aria-current={pathname === link.href ? "page" : undefined}
             >
@@ -60,7 +62,7 @@ export function Navbar() {
 
         {/* Mobile Menu Toggle */}
         <button 
-          className="md:hidden p-2 text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md transition-colors" 
+          className="md:hidden p-2 text-primary-foreground hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-primary rounded-md transition-colors" 
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close main menu" : "Open main menu"}
           aria-expanded={isOpen}
@@ -75,7 +77,7 @@ export function Navbar() {
       <div 
         id="mobile-menu"
         className={cn(
-          "md:hidden absolute top-full left-0 right-0 bg-background border-b p-4 flex flex-col gap-4 shadow-lg transition-all duration-200 origin-top",
+          "md:hidden absolute top-full left-0 right-0 bg-primary border-t border-white/10 p-4 flex flex-col gap-2 shadow-xl transition-all duration-200 origin-top",
           isOpen ? "opacity-100 scale-y-100 visible" : "opacity-0 scale-y-95 invisible pointer-events-none"
         )}
       >
@@ -85,8 +87,10 @@ export function Navbar() {
             href={link.href} 
             onClick={() => setIsOpen(false)} 
             className={cn(
-              "text-lg font-medium p-2 hover:bg-accent rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              pathname === link.href ? "text-primary" : "text-muted-foreground"
+              "text-lg font-medium p-3 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground",
+              pathname === link.href 
+                ? "text-primary-foreground bg-white/20" 
+                : "text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
             )}
             aria-current={pathname === link.href ? "page" : undefined}
           >

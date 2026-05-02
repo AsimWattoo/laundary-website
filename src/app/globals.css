@@ -55,20 +55,20 @@
   --card-foreground: oklch(0.09 0.02 264);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.09 0.02 264);
-  --primary: oklch(0.12 0.03 264); /* Deep Navy (Slate 900) */
+  --primary: oklch(0.3 0.1 260); /* Vibrant Navy Blue */
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.96 0.01 264);
-  --secondary-foreground: oklch(0.12 0.03 264);
+  --secondary-foreground: oklch(0.3 0.1 260);
   --muted: oklch(0.96 0.01 264);
   --muted-foreground: oklch(0.45 0.03 264);
   --accent: oklch(0.96 0.01 264);
-  --accent-foreground: oklch(0.12 0.03 264);
+  --accent-foreground: oklch(0.3 0.1 260);
   --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(0.92 0.01 264);
   --input: oklch(0.92 0.01 264);
-  --ring: oklch(0.12 0.03 264);
-  --chart-1: oklch(0.12 0.03 264); /* Navy */
+  --ring: oklch(0.3 0.1 260);
+  --chart-1: oklch(0.3 0.1 260); /* Vibrant Navy Blue */
   --chart-2: oklch(0.45 0.03 264); /* Slate */
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
