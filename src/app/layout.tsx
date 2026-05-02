@@ -1,6 +1,6 @@
 import './globals.css';
 import { Navbar } from '@/components/Navbar';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import { ClientOnly } from '@/components/ClientOnly';
 import { Mona_Sans } from 'next/font/google';
@@ -14,6 +14,21 @@ const monaSans = Mona_Sans({
 export const metadata: Metadata = {
   title: 'Laundry Tracker',
   description: 'Effortlessly track your laundry sessions and wardrobe items.',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Laundry Tracker',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#1a365d',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
