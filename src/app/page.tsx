@@ -12,29 +12,19 @@ export const dynamic = 'force-dynamic';
 export default async function Dashboard() {
   const [totalClothes] = await db.select({ count: count() }).from(clothes);
 
-  // Fetch active sessions
-  const activeSessionsRaw = await db
-    .select()
-    .from(laundrySessions)
-    .where(eq(laundrySessions.status, "active"))
-    .orderBy(desc(laundrySessions.createdAt));
-
-  // Fetch items for active sessions to get counts
-  const activeSessions = await Promise.all(
-    activeSessionsRaw.map(async (session) => {
-      const items = await db
-        .select()
-        .from(laundryItems)
-        .where(eq(laundryItems.sessionId, session.id));
-
-      const returnedItemsCount = items.filter((i) => i.isReturned).length;
-      return {
-        ...session,
-        totalItemsCount: items.length,
-        returnedItemsCount,
-      };
+  // Fetch active sessions with item counts in a single query
+  const activeSessions = await db
+    .select({
+      id: laundrySessions.id,
+      createdAt: laundrySessions.createdAt,
+      totalItemsCount: count(laundryItems.id),
+      returnedItemsCount: sql<number>`cast(count(${laundryItems.id}) filter (where ${laundryItems.isReturned} = true) as integer)`,
     })
-  );
+    .from(laundrySessions)
+    .leftJoin(laundryItems, eq(laundrySessions.id, laundryItems.sessionId))
+    .where(eq(laundrySessions.status, "active"))
+    .groupBy(laundrySessions.id)
+    .orderBy(desc(laundrySessions.createdAt));
 
   // Aggregations for Charts
   const thirtyDaysAgo = subDays(new Date(), 30);
@@ -42,7 +32,7 @@ export default async function Dashboard() {
   // 1. Volume Trend (Last 30 days)
   const trendDataRaw = await db
     .select({
-      date: sql<string>`DATE(${laundrySessions.createdAt})`,
+      date: sql<string | Date>`DATE(${laundrySessions.createdAt})`,
       count: count(),
     })
     .from(laundrySessions)
@@ -56,7 +46,7 @@ export default async function Dashboard() {
     const label = format(d, "MMM dd");
     const dayData = trendDataRaw.find(entry => {
       // Postgres DATE() might return a string in yyyy-MM-dd format or a Date object
-      const entryDate = entry.date instanceof Date ? format(entry.date, "yyyy-MM-dd") : entry.date;
+      const entryDate = entry.date instanceof Date ? format(entry.date, "yyyy-MM-dd") : String(entry.date);
       return entryDate === dateStr;
     });
     return {
@@ -65,19 +55,24 @@ export default async function Dashboard() {
     };
   });
 
-  // 2. Status Distribution
-  const [returnedCount] = await db
-    .select({ count: count() })
+  // 2. Status Distribution - Consolidated into a single query
+  const statusCounts = await db
+    .select({
+      isReturned: laundryItems.isReturned,
+      count: count(),
+    })
     .from(laundryItems)
-    .where(eq(laundryItems.isReturned, true));
-  const [pendingCount] = await db
-    .select({ count: count() })
-    .from(laundryItems)
-    .where(eq(laundryItems.isReturned, false));
+    .groupBy(laundryItems.isReturned);
 
   const statusData = [
-    { name: "Returned", value: returnedCount.count },
-    { name: "Pending", value: pendingCount.count },
+    { 
+      name: "Returned", 
+      value: Number(statusCounts.find(s => s.isReturned)?.count ?? 0)
+    },
+    { 
+      name: "Pending", 
+      value: Number(statusCounts.find(s => !s.isReturned)?.count ?? 0)
+    },
   ];
 
   // 3. Most Laundered Items
@@ -97,27 +92,19 @@ export default async function Dashboard() {
     count: Number(item.count),
   }));
 
-  // Fetch recent completed sessions (limit 5)
-  const recentCompletedSessionsRaw = await db
-    .select()
+  // Fetch recent completed sessions with item counts in a single query (limit 5)
+  const recentCompletedSessions = await db
+    .select({
+      id: laundrySessions.id,
+      createdAt: laundrySessions.createdAt,
+      totalItemsCount: count(laundryItems.id),
+    })
     .from(laundrySessions)
+    .leftJoin(laundryItems, eq(laundrySessions.id, laundryItems.sessionId))
     .where(eq(laundrySessions.status, "completed"))
+    .groupBy(laundrySessions.id)
     .orderBy(desc(laundrySessions.createdAt))
     .limit(5);
-
-  const recentCompletedSessions = await Promise.all(
-    recentCompletedSessionsRaw.map(async (session) => {
-      const [itemsCount] = await db
-        .select({ count: count() })
-        .from(laundryItems)
-        .where(eq(laundryItems.sessionId, session.id));
-
-      return {
-        ...session,
-        totalItemsCount: itemsCount.count,
-      };
-    })
-  );
 
   return (
     <div className="space-y-8 pb-10">
